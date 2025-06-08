@@ -1,15 +1,17 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154/build/three.module.js';
-import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.154/examples/jsm/loaders/GLTFLoader.js';
-import {GUI} from 'https://cdn.jsdelivr.net/npm/lil-gui@0.18/+esm';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GUI } from 'lil-gui';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 let scene, camera, renderer;
 let model;
 let svoRoot;
 const gui = new GUI();
 const params = { lod: 3 };
+let controls;
 
 init();
-loadModel('model.glb');
+loadModel('models/model.glb');
 
 function init() {
     scene = new THREE.Scene();
@@ -21,6 +23,10 @@ function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    controls.update();
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 5, 5);
@@ -38,8 +44,16 @@ function init() {
 function loadModel(url) {
     const loader = new GLTFLoader();
     loader.load(url, (gltf) => {
-        model = gltf.scene.children[0];
-        model.traverse(o => { if (o.isMesh) o.material.wireframe = false; });
+        let mesh;
+        gltf.scene.traverse((o) => {
+            if (o.isMesh && !mesh) mesh = o;
+            if (o.isMesh) o.material.wireframe = false;
+        });
+        if (!mesh) {
+            console.error('Меш не найден в модели!');
+            return;
+        }
+        model = mesh;
         scene.add(model);
         buildSVO(model);
         visualizeSVO();
@@ -139,6 +153,7 @@ function gatherLeaves(node, out) {
 
 function animate() {
     requestAnimationFrame(animate);
+    controls.update();
     renderer.render(scene, camera);
 }
 
